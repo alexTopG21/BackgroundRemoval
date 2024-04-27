@@ -1,46 +1,71 @@
 import streamlit as st
-from rembg import remove
 from PIL import Image
+import requests
 from io import BytesIO
 import base64
 
-st.set_page_config(layout="wide", page_title="Image Background Remover")
+def get_image_base64(image):
+    # Convert image to base64 for API submission
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    return base64.b64encode(buffered.getvalue()).decode()
 
-st.write("## Remove background from your image")
-st.write(
-    ":dog: Try uploading an image to watch the background magically removed. Full quality images can be downloaded from the sidebar. This code is open source and available [here](https://github.com/tyler-simons/BackgroundRemoval) on GitHub. Special thanks to the [rembg library](https://github.com/danielgatis/rembg) :grin:"
-)
-st.sidebar.write("## Upload and download :gear:")
+# User interaction for uploading an image
+st.write("## Upload your image for analysis")
+uploaded_image = st.file_uploader("Choose an image...", type=["png", "jpg", "jpeg"])
 
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-
-# Download the fixed image
-def convert_image(img):
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    byte_im = buf.getvalue()
-    return byte_im
-
-
-def fix_image(upload):
-    image = Image.open(upload)
-    col1.write("Original Image :camera:")
-    col1.image(image)
-
-    fixed = remove(image)
-    col2.write("Fixed Image :wrench:")
-    col2.image(fixed)
-    st.sidebar.markdown("\n")
-    st.sidebar.download_button("Download fixed image", convert_image(fixed), "fixed.png", "image/png")
-
-
-col1, col2 = st.columns(2)
-my_upload = st.sidebar.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
-
-if my_upload is not None:
-    if my_upload.size > MAX_FILE_SIZE:
-        st.error("The uploaded file is too large. Please upload an image smaller than 5MB.")
+if uploaded_image:
+    # Display the uploaded image
+    image = Image.open(uploaded_image)
+    st.image(image, caption='Uploaded Image', use_column_width=True)
+    
+    # Convert image to base64
+    image_base64 = get_image_base64(image)
+    image_media_type = "image/jpeg"  # Adjust as necessary based on the image format
+    
+    # API request setup
+    api_key = "your_api_key_here"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "claude-3-opus-20240229",
+        "max_tokens": 1024,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": image_media_type,
+                            "data": image_base64,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": "Describe this image."
+                    }
+                ],
+            }
+        ]
+    }
+    
+    # API URL
+    api_url = "https://api.anthropic.com/your_model_endpoint"
+    
+    # Send the request
+    response = requests.post(api_url, json=data, headers=headers)
+    
+    if response.status_code == 200:
+        result = response.json()
+        st.write("## Analysis by Claude")
+        st.write(result["description"])  # Modify according to the actual key in the response
     else:
-        fix_image(upload=my_upload)
-else:
-    fix_image("./zebra.jpg")
+        st.error("Failed to analyze the image. Please try again.")
+
+# Sidebar with additional resources
+st.sidebar.write("## Additional Resources")
+st.sidebar.write("Learn more about how colors can enhance your style and appearance.")
