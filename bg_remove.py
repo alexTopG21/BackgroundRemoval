@@ -15,7 +15,9 @@ def get_image_base64(image):
     return base64.b64encode(buffered.getvalue()).decode()
 
 # Initialize the Anthropic client
-client = anthropic.Anthropic(api_key="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")
+api_key = os.getenv("ANTHROPIC_API_KEY")
+client = anthropic.Anthropic(api_key=api_key)
+
 
 # User interface for uploading an image
 st.write("## Upload your image for analysis")
@@ -52,7 +54,9 @@ if uploaded_image:
         ]
     )
 
-        # Display the response from the API
-    st.write("**Analysis:**")
-    # Access the text content directly from message.content (assuming it's a TextBlock)
-    st.write(message.content)  # Assuming message.content is a TextBlock
+# Display the response from the API
+
+    st.write(message.content[0].text)  # Assuming message.content is a TextBlock
+
+    
+
